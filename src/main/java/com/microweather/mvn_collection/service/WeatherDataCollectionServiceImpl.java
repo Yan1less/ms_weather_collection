@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import redis.clients.jedis.JedisCluster;
 
 import java.util.concurrent.TimeUnit;
 
@@ -19,13 +20,12 @@ import java.util.concurrent.TimeUnit;
 public class WeatherDataCollectionServiceImpl implements WeatherDataCollectionService {
 	private static final String WEATHER_URI = "http://wthrcdn.etouch.cn/weather_mini?";
 
-	private static final long TIME_OUT = 1800L; // 1800s
 	
 	@Autowired
 	private RestTemplate restTemplate;
-	
+
 	@Autowired
-	private StringRedisTemplate stringRedisTemplate;
+	private JedisCluster cluster;
 	
 	@Override
 	public void syncDateByCityId(String cityId) {
@@ -40,8 +40,6 @@ public class WeatherDataCollectionServiceImpl implements WeatherDataCollectionSe
 	private void saveWeatherData(String uri) {
 		String key = uri;
 		String strBody = null;
-		ValueOperations<String, String>  ops = stringRedisTemplate.opsForValue();
-
 		// 调用服务接口来获取
  		ResponseEntity<String> respString = restTemplate.getForEntity(uri, String.class);
 
@@ -50,7 +48,8 @@ public class WeatherDataCollectionServiceImpl implements WeatherDataCollectionSe
 		}
 		
 		// 数据写入缓存
-		ops.set(key, strBody, TIME_OUT, TimeUnit.SECONDS);
+		cluster.append(key,strBody);
+
 
 	}
 }
